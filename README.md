@@ -49,15 +49,15 @@ except FetchError as e:
 
 You can customize your search by specifying the following parameters:
 
--   `query`: The search query you want to use.
--   `sort`: Sorting method for the search results. Available options:
-    -   `MAX_SEED`: Sort by decreasing number of seed counts (default).
-    -   `MAX_LEECH`: Sort by decreasing number of leech counts.
-    -   `SIZE_ASC`: Sort by increasing size per file.
-    -   `SIZE_DSC`: Sort by decreasing size per file.
-    -   `RECENT`: Sort by recent torrents first.
-    -   `NONE`: No sorting (Snowfl default).
--   `include_nsfw`: Include NSFW (Not Safe For Work) content in the search results. Set to `True` to include NSFW content; `False` by default.
+- `query`: The search query you want to use.
+- `sort`: Sorting method for the search results. Available options:
+  - `MAX_SEED`: Sort by decreasing number of seed counts (default).
+  - `MAX_LEECH`: Sort by decreasing number of leech counts.
+  - `SIZE_ASC`: Sort by increasing size per file.
+  - `SIZE_DSC`: Sort by decreasing size per file.
+  - `RECENT`: Sort by recent torrents first.
+  - `NONE`: No sorting (Snowfl default).
+- `include_nsfw`: Include NSFW (Not Safe For Work) content in the search results. Set to `True` to include NSFW content; `False` by default.
 
 ### Return Value
 
@@ -118,6 +118,21 @@ The `parse` method returns a dictionary with the following structure:
     "message": "OK",
     "data": []
 }
+```
+
+## Advanced Usage
+
+### Force Fetch Magnet Links
+
+The `parse` method includes an optional parameter `force_fetch_magnet`. When set to `True`, this forces the wrapper to fetch magnet links for all items, even if they are not available by default. This can be useful when you need complete magnet link data for your search results.
+
+```python
+try:
+    query = "JoJo"
+    result = snowfl.parse(query, force_fetch_magnet=True)
+    pprint(result)
+except FetchError as e:
+    print(f"Error searching Snowfl: {e}")
 ```
 
 ## Conclusion
