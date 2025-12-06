@@ -88,3 +88,22 @@ def test_str(snowfl_instance):
 
 def test_repr(snowfl_instance):
     assert repr(snowfl_instance) == "Snowfl()"
+
+
+@patch("snowfl.snowfl.Snowfl._get_magnet_url")
+def test_fetch_magnet_links(mock_get_magnet_url, snowfl_instance):
+    mock_get_magnet_url.return_value = "magnet:?xt=urn:btih:dummyhash"
+
+    data = [
+        {"key": "value1", "magnet": None},
+        {"key": "value2"},
+    ]
+
+    result = snowfl_instance._fetch_magnet_links(data)
+
+    assert mock_get_magnet_url.call_count == 2
+
+    assert result == [
+        {"key": "value1", "magnet": "magnet:?xt=urn:btih:dummyhash"},
+        {"key": "value2", "magnet": "magnet:?xt=urn:btih:dummyhash"},
+    ]
