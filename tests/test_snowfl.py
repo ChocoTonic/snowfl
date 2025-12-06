@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from snowfl.snowfl import ApiError, FetchError, Snowfl
+from snowfl.snowfl import ApiError, FetchError, Snowfl, BASE_URL, HEADERS
 
 
 @pytest.fixture
@@ -157,3 +157,30 @@ def test_get_magnet_url_with_exception(mock_get, snowfl_instance):
     # Assert that a FetchError is raised
     with pytest.raises(FetchError, match="Error fetching magnet URL: Unexpected error"):
         snowfl_instance._get_magnet_url(item)
+
+
+@patch("requests.get")
+@patch("requests.utils.quote")
+def test_get_magnet_url_api_url_construction(mock_quote, mock_get, snowfl_instance):
+    # Mock the quote function to return an encoded URL
+    mock_quote.return_value = "encoded_url"
+
+    # Mock the requests.get method to return a valid response
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {"url": "magnet:?xt=urn:btih:dummyhash"}
+
+    # Sample item data
+    item = {"url": "http://example.com", "site": "example"}
+
+    # Call the _get_magnet_url method
+    result = snowfl_instance._get_magnet_url(item)
+
+    # Assert that the quote function was called with the correct URL
+    mock_quote.assert_called_once_with("http://example.com")
+
+    # Assert that the constructed API URL is correct
+    expected_api_url = f"{BASE_URL}{snowfl_instance.api_key}/example/encoded_url"
+    mock_get.assert_called_once_with(expected_api_url, headers=HEADERS)
+
+    # Assert that the result is the expected magnet URL
+    assert result == "magnet:?xt=urn:btih:dummyhash"
