@@ -107,3 +107,27 @@ def test_fetch_magnet_links(mock_get_magnet_url, snowfl_instance):
         {"key": "value1", "magnet": "magnet:?xt=urn:btih:dummyhash"},
         {"key": "value2", "magnet": "magnet:?xt=urn:btih:dummyhash"},
     ]
+
+
+@patch("snowfl.snowfl.Snowfl._get_magnet_url")
+def test_fetch_magnet_links_with_fetch_error(
+    mock_get_magnet_url, snowfl_instance, caplog
+):
+    mock_get_magnet_url.side_effect = FetchError("Failed to fetch magnet link")
+
+    data = [
+        {"key": "value1", "magnet": None},
+        {"key": "value2"},
+    ]
+
+    result = snowfl_instance._fetch_magnet_links(data)
+
+    assert any(
+        "Failed to fetch magnet link for item" in record.message
+        for record in caplog.records
+    )
+
+    assert result == [
+        {"key": "value1", "magnet": None},
+        {"key": "value2"},
+    ]
