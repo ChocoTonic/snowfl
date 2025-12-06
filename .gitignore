@@ -6,3 +6,7 @@ myenv
 scripts
 temp*
 coverage.xml
+.env
+*.tar.gz
+*.whl
+snowfl.egg-info/
