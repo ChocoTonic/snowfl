@@ -131,3 +131,29 @@ def test_fetch_magnet_links_with_fetch_error(
         {"key": "value1", "magnet": None},
         {"key": "value2"},
     ]
+
+
+@patch("requests.get")
+def test_get_magnet_url_with_non_200_status(mock_get, snowfl_instance):
+    # Mock the requests.get method to return a response with a non-200 status code
+    mock_get.return_value.status_code = 404
+
+    # Sample item data
+    item = {"url": "http://example.com", "site": "example"}
+
+    # Assert that a FetchError is raised
+    with pytest.raises(FetchError, match="Couldn't get Magnet URL"):
+        snowfl_instance._get_magnet_url(item)
+
+
+@patch("requests.get")
+def test_get_magnet_url_with_exception(mock_get, snowfl_instance):
+    # Mock the requests.get method to raise an exception
+    mock_get.side_effect = Exception("Unexpected error")
+
+    # Sample item data
+    item = {"url": "http://example.com", "site": "example"}
+
+    # Assert that a FetchError is raised
+    with pytest.raises(FetchError, match="Error fetching magnet URL: Unexpected error"):
+        snowfl_instance._get_magnet_url(item)
