@@ -13,5 +13,5 @@ build:
 	rm -rf src/snowfl.egg-info dist
 	uv run python -m build
 
-publish:
+publish: build
 	uv publish
