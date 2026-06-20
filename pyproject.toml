@@ -5,7 +5,7 @@ description = "An unofficial Python wrapper for the Snowfl API, enabling program
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "certifi>=2025.11.12",
+    "certifi>=2026.6.17",
     "charset-normalizer>=3.4.4",
     "idna>=3.11",
     "requests>=2.32.5",
