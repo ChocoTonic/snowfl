@@ -1,31 +1,44 @@
 name: Dependabot auto-merge
 
-# Enables GitHub's native auto-merge on Dependabot PRs for minor/patch bumps.
-# GitHub then merges automatically once required status checks (the project CI)
-# pass. Major bumps are intentionally skipped and left for manual review.
-on: pull_request
+# Self-implemented auto-merge: GitHub's native `gh pr merge --auto`
+# requires repo-level "Allow auto-merge", which is gated to Pro+
+# accounts for private repos. We listen for snowfl CI completing
+# on a dependabot/* branch and squash-merge instead.
+
+on:
+  workflow_run:
+    workflows: ["snowfl CI"]
+    types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  auto-merge:
+  merge:
     runs-on: ubuntu-latest
-    # Only act on PRs opened by Dependabot.
-    if: github.actor == 'dependabot[bot]'
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Fetch Dependabot metadata
-        id: meta
-        uses: dependabot/fetch-metadata@v2
+      - name: Find PR for branch
+        id: pr
+        run: |
+          NUM=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+              --head "${{ github.event.workflow_run.head_branch }}" \
+              --state open --json number --jq '.[0].number // empty')
+          if [ -z "$NUM" ]; then
+            echo "No open PR for ${{ github.event.workflow_run.head_branch }}; skipping."
+            exit 0
+          fi
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Enable auto-merge for minor/patch
-        # For grouped PRs, update-type is the highest semver bump in the group,
-        # so a group containing a major will NOT match here.
-        if: >-
-          steps.meta.outputs.update-type == 'version-update:semver-minor' ||
-          steps.meta.outputs.update-type == 'version-update:semver-patch'
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Squash-merge
+        if: steps.pr.outputs.number != ''
+        run: |
+          gh pr merge "${{ steps.pr.outputs.number }}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --squash --delete-branch
