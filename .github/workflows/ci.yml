@@ -1,0 +1,102 @@
+name: snowfl CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Opt third-party JS actions (upload-artifact v4) into Node 24. Without
+# this they run on Node 20 which GitHub starts forcing off June 2 2026.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  unit:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Cache .venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+
+      - name: Sync deps
+        run: uv sync --extra dev
+
+      - name: Run tests (with coverage)
+        run: make test
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  live:
+    # Skip on push to avoid double-runs (PRs from the same repo trigger both).
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Cache .venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+
+      - name: Sync deps
+        run: uv sync --extra dev
+
+      - name: Run live tests
+        run: make test-live
+
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Cache .venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+
+      - name: Sync deps
+        run: uv sync --extra dev
+
+      - name: Build wheel
+        run: uv build
+
+      - name: Smoke-import wheel in isolated venv
+        run: |
+          uv run --isolated --with dist/*.whl --no-project -- python -c "import snowfl; print(snowfl.__name__)"

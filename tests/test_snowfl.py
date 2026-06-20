@@ -11,6 +11,7 @@ def snowfl_instance():
     return Snowfl()
 
 
+@pytest.mark.live
 def test_initialize_with_valid_key(snowfl_instance):
     snowfl_instance.initialize()
 
