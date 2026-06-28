@@ -100,3 +100,64 @@ jobs:
       - name: Smoke-import wheel in isolated venv
         run: |
           uv run --isolated --with dist/*.whl --no-project -- python -c "import snowfl; print(snowfl.__name__)"
+
+  plugin:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Cache .venv
+        uses: actions/cache@v5
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+
+      - name: Sync deps
+        run: uv sync --extra dev
+
+      - name: Regenerate plugin from sources
+        run: make plugin
+
+      - name: Plugin artifact is in sync (run `make plugin` if this fails)
+        run: git diff --exit-code engine/snowfl.py
+
+      - name: Plugin compiles as stdlib-only (system python)
+        run: python3 -m py_compile engine/snowfl.py
+
+      - name: Run plugin tests
+        run: PYTHONPATH=src uv run python -m pytest tests/test_plugin.py
+
+      # The useful form of "hash & compare": if the generated plugin body changed
+      # but the VERSION header did not, qBittorrent users would never receive the
+      # update — so fail and ask for a PLUGIN_VERSION bump.
+      - name: Version-bump guard
+        if: github.event_name == 'pull_request'
+        run: |
+          base_ref="${{ github.base_ref }}"
+          git fetch origin "$base_ref" --depth=1
+          if git cat-file -e "origin/$base_ref:engine/snowfl.py" 2>/dev/null; then
+            git show "origin/$base_ref:engine/snowfl.py" > /tmp/base_plugin.py
+            new_ver=$(grep -m1 '^# VERSION:' engine/snowfl.py)
+            old_ver=$(grep -m1 '^# VERSION:' /tmp/base_plugin.py)
+            grep -v '^# VERSION:' engine/snowfl.py > /tmp/head_body.py
+            grep -v '^# VERSION:' /tmp/base_plugin.py > /tmp/base_body.py
+            if ! diff -q /tmp/base_body.py /tmp/head_body.py >/dev/null; then
+              if [ "$new_ver" = "$old_ver" ]; then
+                echo "::error::Plugin content changed but VERSION did not ($new_ver). Bump PLUGIN_VERSION in plugin/shell.py so qBittorrent users get the update."
+                exit 1
+              fi
+              echo "Plugin changed and version bumped: $old_ver -> $new_ver"
+            else
+              echo "Plugin body unchanged."
+            fi
+          else
+            echo "No base plugin artifact yet; skipping version guard."
+          fi

@@ -10,6 +10,27 @@ To use this Snowfl API Python wrapper, you can install it using pip:
 pip install snowfl
 ```
 
+## Install as a qBittorrent search plugin
+
+The same code also ships as a self-contained [qBittorrent search plugin](https://github.com/qbittorrent/search-plugins/wiki/How-to-install-search-plugins)
+(`engine/snowfl.py`) — no `pip`, no dependencies, just one file.
+
+In qBittorrent: **View → Search Engine** (enable it), then **Search plugins… →
+Install a new one → Web link**, and paste:
+
+```
+https://raw.githubusercontent.com/ChocoTonic/snowfl/master/engine/snowfl.py
+```
+
+Because that URL tracks the default branch, qBittorrent's **Check for updates**
+will pull new versions automatically whenever the plugin's `# VERSION:` is bumped.
+(You can also pick **Local file** and select a copy of `engine/snowfl.py`.)
+
+> **Maintainers:** `engine/snowfl.py` is generated — do not edit it by hand. Change
+> `src/snowfl/core.py` and/or `plugin/shell.py`, run `make plugin`, bump
+> `PLUGIN_VERSION` in `plugin/shell.py` when behavior changes, and commit the
+> regenerated file. CI verifies the artifact is in sync and that the version was bumped.
+
 ## Usage
 
 ### Initializing Snowfl
