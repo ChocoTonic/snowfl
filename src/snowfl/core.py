@@ -125,3 +125,35 @@ def fetch_results(
     if force_fetch_magnet and data:
         data = fill_magnets(api_key, data, fetch)
     return data
+
+
+AGE_UNIT_SECONDS = {
+    "second": 1,
+    "minute": 60,
+    "hour": 3600,
+    "day": 86400,
+    "week": 604800,
+    "month": 2592000,  # 30 days (approximate)
+    "year": 31536000,  # 365 days (approximate)
+}
+AGE_RE = re.compile(
+    r"(\d+)\s*(second|minute|hour|day|week|month|year)s?", re.IGNORECASE
+)
+
+
+def age_to_pub_date(age, now):
+    """Convert snowfl's relative ``age`` (e.g. ``"2 weeks"``) to an approximate Unix
+    timestamp, measured back from ``now``. Returns ``-1`` when unparseable.
+
+    snowfl exposes only a relative age, so this is necessarily approximate (months
+    are treated as 30 days, years as 365); it is good enough for the qBittorrent
+    "Published On" column and for sorting by recency.
+    """
+    if not age:
+        return -1
+    match = AGE_RE.search(age)
+    if not match:
+        return -1
+    quantity = int(match.group(1))
+    unit_seconds = AGE_UNIT_SECONDS[match.group(2).lower()]
+    return int(now) - (quantity * unit_seconds)

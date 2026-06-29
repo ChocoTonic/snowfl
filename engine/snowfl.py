@@ -1,4 +1,4 @@
-# VERSION: 1.0
+# VERSION: 1.1
 # qBittorrent search engine plugin for snowfl.com
 #
 # AUTO-GENERATED — DO NOT EDIT engine/snowfl.py BY HAND.
@@ -6,6 +6,7 @@
 # Regenerate with `make plugin`. Project: https://github.com/ChocoTonic/snowfl
 import json
 import re
+import time
 from urllib.parse import quote
 
 try:
@@ -22,7 +23,7 @@ except ImportError:
 
 # Bump this whenever generated behavior changes — qBittorrent only pulls an update
 # when the `# VERSION:` header above (stamped from this value) increases.
-PLUGIN_VERSION = "1.0"
+PLUGIN_VERSION = "1.1"
 
 BASE_URL = "https://snowfl.com/"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
@@ -133,6 +134,38 @@ def fetch_results(
     return data
 
 
+AGE_UNIT_SECONDS = {
+    "second": 1,
+    "minute": 60,
+    "hour": 3600,
+    "day": 86400,
+    "week": 604800,
+    "month": 2592000,  # 30 days (approximate)
+    "year": 31536000,  # 365 days (approximate)
+}
+AGE_RE = re.compile(
+    r"(\d+)\s*(second|minute|hour|day|week|month|year)s?", re.IGNORECASE
+)
+
+
+def age_to_pub_date(age, now):
+    """Convert snowfl's relative ``age`` (e.g. ``"2 weeks"``) to an approximate Unix
+    timestamp, measured back from ``now``. Returns ``-1`` when unparseable.
+
+    snowfl exposes only a relative age, so this is necessarily approximate (months
+    are treated as 30 days, years as 365); it is good enough for the qBittorrent
+    "Published On" column and for sorting by recency.
+    """
+    if not age:
+        return -1
+    match = AGE_RE.search(age)
+    if not match:
+        return -1
+    quantity = int(match.group(1))
+    unit_seconds = AGE_UNIT_SECONDS[match.group(2).lower()]
+    return int(now) - (quantity * unit_seconds)
+
+
 class snowfl(object):
     url = "https://snowfl.com"
     name = "Snowfl"
@@ -147,16 +180,25 @@ class snowfl(object):
             sort="MAX_SEED",
             force_fetch_magnet=True,
         )
+        now = time.time()
         for item in results:
+            # snowfl is an aggregator; surface the originating site in the name,
+            # since engine_url must stay "https://snowfl.com" (qBittorrent matches
+            # it to route downloads back to this plugin).
+            name = item.get("name", "")
+            site = item.get("site", "")
+            if site:
+                name = "%s [%s]" % (name, site)
             prettyPrinter(
                 {
                     "link": item.get("magnet") or item.get("url", ""),
-                    "name": item.get("name", ""),
+                    "name": name,
                     "size": item.get("size", "-1"),
                     "seeds": item.get("seeder", -1),
                     "leech": item.get("leecher", -1),
                     "engine_url": self.url,
                     "desc_link": item.get("url", ""),
+                    "pub_date": age_to_pub_date(item.get("age"), now),
                 }
             )
 

@@ -34,9 +34,13 @@ will pull new versions automatically whenever the plugin's `# VERSION:` is bumpe
 (You can also pick **Local file** and select a copy of `engine/snowfl.py`.)
 
 The plugin maps each result to qBittorrent's fields (`link`, `name`, `size`,
-`seeds`, `leech`, `engine_url`, `desc_link`), sorts by seeders, and resolves magnet
-links up front. `engine/snowfl.py` is generated — see [Development](#development)
-before changing it.
+`seeds`, `leech`, `engine_url`, `desc_link`, `pub_date`), sorts by seeders, and
+resolves magnet links up front. Because snowfl is an aggregator, the originating
+site is appended to the name (e.g. `… [limetorrents]`) — `engine_url` must stay
+`https://snowfl.com` so qBittorrent can route downloads back to this plugin. The
+"Published On" column is derived from snowfl's relative age (e.g. "2 weeks"), so
+it is approximate. `engine/snowfl.py` is generated — see
+[Development](#development) before changing it.
 
 ## Usage
 
