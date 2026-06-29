@@ -1,0 +1,75 @@
+name: plugin release
+
+# Publishes the generated qBittorrent plugin to GitHub Releases on every merge to
+# master, with an auto-incremented version. No push back to master, so this works
+# with branch protection. Users install/update from:
+#   https://github.com/ChocoTonic/snowfl/releases/latest/download/snowfl.py
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync deps
+        run: uv sync --extra dev
+
+      # Monotonic version: 2.<run_number> (the 2.x line supersedes the manual 1.x era).
+      - name: Generate plugin with release version
+        id: gen
+        env:
+          PLUGIN_VERSION: "2.${{ github.run_number }}"
+        run: |
+          uv run python tools/build_plugin.py
+          python3 -m py_compile engine/snowfl.py
+          echo "version=2.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      # Only publish when the plugin body actually changed, so README-only or
+      # library-only merges don't spawn pointless releases (and pointless updates).
+      - name: Decide whether to publish
+        id: decide
+        run: |
+          set +e
+          url="https://github.com/${{ github.repository }}/releases/latest/download/snowfl.py"
+          http=$(curl -s -L -o /tmp/published.py -w "%{http_code}" "$url")
+          if [ "$http" = "200" ]; then
+            grep -v '^# VERSION:' /tmp/published.py > /tmp/pub_body
+            grep -v '^# VERSION:' engine/snowfl.py > /tmp/new_body
+            if diff -q /tmp/pub_body /tmp/new_body >/dev/null; then
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              echo "Plugin body unchanged since latest release; skipping."
+            else
+              echo "publish=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "No prior release (HTTP $http); publishing first."
+          fi
+
+      - name: Publish release
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v="${{ steps.gen.outputs.version }}"
+          gh release create "v$v" engine/snowfl.py \
+            --title "snowfl plugin v$v" \
+            --notes "Automated qBittorrent search-plugin release.
+
+          Install / update URL (paste into qBittorrent → Search plugins → Install a new one → Web link):
+          https://github.com/${{ github.repository }}/releases/latest/download/snowfl.py"

@@ -36,13 +36,14 @@ def _core_body(core_src):
     return core_src[idx + len(CORE_MARKER):].strip("\n")
 
 
-def _plugin_version(shell_src):
-    match = re.search(
-        r'^PLUGIN_VERSION\s*=\s*["\']([^"\']+)["\']', shell_src, re.M
-    )
-    if not match:
-        raise SystemExit("plugin/shell.py is missing a PLUGIN_VERSION constant")
-    return match.group(1)
+def _plugin_version():
+    """Version stamped into the ``# VERSION:`` header.
+
+    Read from the ``PLUGIN_VERSION`` env var so the release workflow can stamp a
+    real, monotonic version at publish time. Defaults to ``0.0`` for local/test
+    builds (the committed tree no longer carries a version — releases own it).
+    """
+    return os.environ.get("PLUGIN_VERSION", "0.0").strip()
 
 
 def generate():
@@ -50,8 +51,7 @@ def generate():
     shell_src = _read(SHELL)
     if CORE_PLACEHOLDER not in shell_src:
         raise SystemExit("plugin/shell.py is missing the placeholder: " + CORE_PLACEHOLDER)
-    version = _plugin_version(shell_src)
-    out = shell_src.replace(VERSION_PLACEHOLDER, version)
+    out = shell_src.replace(VERSION_PLACEHOLDER, _plugin_version())
     out = out.replace(CORE_PLACEHOLDER, _core_body(_read(CORE)))
     return out
 
@@ -62,7 +62,7 @@ def main():
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(out)
     py_compile.compile(OUT, doraise=True)
-    print("Wrote {0} (VERSION {1})".format(OUT, _plugin_version(_read(SHELL))))
+    print("Wrote {0} (VERSION {1})".format(OUT, _plugin_version()))
 
 
 if __name__ == "__main__":

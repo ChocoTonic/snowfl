@@ -20,18 +20,18 @@ pip install snowfl
 ## Install as a qBittorrent search plugin
 
 The same code also ships as a self-contained [qBittorrent search plugin](https://github.com/qbittorrent/search-plugins/wiki/How-to-install-search-plugins)
-(`engine/snowfl.py`) — no `pip`, no dependencies, just one file.
+(`snowfl.py`) — no `pip`, no dependencies, just one file.
 
 In qBittorrent: **View → Search Engine** (enable it), then **Search plugins… →
 Install a new one → Web link**, and paste:
 
 ```
-https://raw.githubusercontent.com/ChocoTonic/snowfl/master/engine/snowfl.py
+https://github.com/ChocoTonic/snowfl/releases/latest/download/snowfl.py
 ```
 
-Because that URL tracks the default branch, qBittorrent's **Check for updates**
-will pull new versions automatically whenever the plugin's `# VERSION:` is bumped.
-(You can also pick **Local file** and select a copy of `engine/snowfl.py`.)
+That URL always points at the newest published release, so qBittorrent's **Check
+for updates** pulls new versions automatically as they are released. (You can also
+pick **Local file** and select a downloaded copy.)
 
 The plugin maps each result to qBittorrent's fields (`link`, `name`, `size`,
 `seeds`, `leech`, `engine_url`, `desc_link`, `pub_date`), sorts by seeders, and
@@ -179,7 +179,8 @@ src/snowfl/core.py     Transport-agnostic core: API-key scraping, URL builders,
 src/snowfl/            The requests-based library layer (Snowfl.parse / initialize).
 plugin/shell.py        qBittorrent plugin template (class snowfl + VERSION header).
 tools/build_plugin.py  Deterministic generator that inlines core.py into the template.
-engine/snowfl.py       The generated single-file plugin (committed, served to users).
+engine/snowfl.py       Generated plugin — NOT committed (gitignored); built for tests
+                       and published to GitHub Releases by CI.
 tests/                 Library tests, live integration tests, and plugin tests.
 ```
 
@@ -195,17 +196,18 @@ make build       # build the wheel/sdist
 
 ### Changing the plugin
 
-`engine/snowfl.py` is generated — **do not edit it by hand.** Instead:
+`engine/snowfl.py` is generated and **not committed** — just edit the sources:
 
 1. Edit `src/snowfl/core.py` and/or `plugin/shell.py`.
-2. Run `make plugin` to regenerate `engine/snowfl.py`.
-3. Bump `PLUGIN_VERSION` in `plugin/shell.py` whenever behavior changes (qBittorrent
-   only pulls an update when the `# VERSION:` header increases).
-4. Commit the regenerated `engine/snowfl.py`.
+2. Open a PR. CI regenerates the plugin, compiles it as stdlib-only, and runs the
+   plugin tests (including the real qBittorrent-loader contract test).
+3. On merge to `master`, the **plugin release** workflow regenerates the plugin,
+   stamps a fresh monotonic version (`# VERSION:` header), and publishes it to
+   GitHub Releases — only when the plugin body actually changed.
 
-CI enforces this: it regenerates the plugin and fails if the committed file is stale,
-if it does not compile as stdlib-only, or if the generated body changed without a
-`PLUGIN_VERSION` bump.
+You never bump the version or commit the artifact by hand; the release workflow owns
+both. Run `make plugin` locally if you want to inspect the generated file (it lands
+at the gitignored `engine/snowfl.py` with a `0.0` dev version).
 
 ## Conclusion
 

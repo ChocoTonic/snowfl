@@ -137,12 +137,17 @@ def test_download_torrent_magnet_passthrough(plugin, capsys):
     assert out == "magnet:?xt=urn:btih:DEADBEEF magnet:?xt=urn:btih:DEADBEEF"
 
 
-def test_generator_output_in_sync():
-    """The committed artifact must byte-match a fresh generation."""
+def test_generator_is_deterministic_and_valid():
+    """The generator is pure/deterministic and emits valid Python.
+
+    (The artifact is no longer committed — it's generated and published via
+    Releases — so there's nothing to byte-compare against; instead pin the
+    properties the release pipeline relies on.)
+    """
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import build_plugin
 
-    generated = build_plugin.generate()
-    with open(PLUGIN_PATH, encoding="utf-8") as f:
-        committed = f.read()
-    assert generated == committed, "engine/snowfl.py is stale — run `make plugin`"
+    first = build_plugin.generate()
+    second = build_plugin.generate()
+    assert first == second, "generator must be deterministic"
+    compile(first, "<engine/snowfl.py>", "exec")  # must be valid Python

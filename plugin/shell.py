@@ -21,9 +21,8 @@ except ImportError:
     def prettyPrinter(dictionary):
         print(dictionary)
 
-# Bump this whenever generated behavior changes — qBittorrent only pulls an update
-# when the `# VERSION:` header above (stamped from this value) increases.
-PLUGIN_VERSION = "1.1"
+# The `# VERSION:` header is stamped at build time (PLUGIN_VERSION env var); the
+# release workflow sets a real, monotonic version when publishing to GitHub Releases.
 
 # __SNOWFL_CORE__
 
