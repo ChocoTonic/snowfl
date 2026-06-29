@@ -1,48 +1,53 @@
-# Snowfl API Python Wrapper
+# Snowfl search plugin for qBittorrent
 
-This is an unofficial Python wrapper for the [Snowfl](https://snowfl.com/) API, inspired by the work of [c0dysharma](https://github.com/c0dysharma/snowfl-api). Snowfl is a platform for searching and accessing torrent files.
+A maintained [qBittorrent](https://www.qbittorrent.org/) **search plugin** for
+[Snowfl](https://snowfl.com/), a torrent meta-search aggregator. It's a single,
+dependency-free file you drop into qBittorrent — **[install it below](#install-in-qbittorrent)**.
 
-From a single codebase, it can be used two ways:
+> This is an independent, updated fork. The plugin listed in qBittorrent's official
+> wiki is years out of date; this one is rewritten and tested against current
+> qBittorrent (5.2).
 
-- **As a Python library** — `pip install snowfl`, then search programmatically. See [Usage](#usage).
-- **As a qBittorrent search plugin** — a self-contained, dependency-free `engine/snowfl.py` generated from the same core. See [Install as a qBittorrent search plugin](#install-as-a-qbittorrent-search-plugin).
+The same scraping core is also published as a small Python API wrapper on PyPI, if
+you'd rather query Snowfl programmatically — see
+**[Use as a Python library](#use-as-a-python-library)**.
 
-The shared scraping logic lives in `src/snowfl/core.py`; the library and the plugin are thin layers over it (see [Development](#development)).
+## Install in qBittorrent
 
-## Installation
-
-To use this Snowfl API Python wrapper, you can install it using pip:
-
-```bash
-pip install snowfl
-```
-
-## Install as a qBittorrent search plugin
-
-The same code also ships as a self-contained [qBittorrent search plugin](https://github.com/qbittorrent/search-plugins/wiki/How-to-install-search-plugins)
-(`snowfl.py`) — no `pip`, no dependencies, just one file.
-
-In qBittorrent: **View → Search Engine** (enable it), then **Search plugins… →
-Install a new one → Web link**, and paste:
+One self-contained, dependency-free file. First enable search
+(**View → Search Engine**), then open the **Search** tab → **Search plugins…**
+(bottom-right) → **Install a new one → Web link**, and paste:
 
 ```
 https://github.com/ChocoTonic/snowfl/releases/latest/download/snowfl.py
 ```
 
-That URL always points at the newest published release, so qBittorrent's **Check
-for updates** pulls new versions automatically as they are released. (You can also
-pick **Local file** and select a downloaded copy.)
+(Or choose **Local file** and select a downloaded copy of `snowfl.py`.)
 
-The plugin maps each result to qBittorrent's fields (`link`, `name`, `size`,
-`seeds`, `leech`, `engine_url`, `desc_link`, `pub_date`), sorts by seeders, and
-resolves magnet links up front. Because snowfl is an aggregator, the originating
-site is appended to the name (e.g. `… [limetorrents]`) — `engine_url` must stay
-`https://snowfl.com` so qBittorrent can route downloads back to this plugin. The
-"Published On" column is derived from snowfl's relative age (e.g. "2 weeks"), so
-it is approximate. `engine/snowfl.py` is generated — see
-[Development](#development) before changing it.
+### Updating
 
-## Usage
+qBittorrent's **Check for updates** button does **not** update this plugin — that
+button only checks the official [`qbittorrent/search-plugins`](https://github.com/qbittorrent/search-plugins)
+index, which this independent fork isn't part of. To update, just **Install a new
+one** with the same URL again: it always serves the latest release, and each
+release increments the `# VERSION:` header, so qBittorrent installs the newer file
+over the old one.
+
+### What you get
+
+Each result maps to qBittorrent's columns. Because Snowfl is an aggregator, the
+originating site is appended to the name (e.g. `… [limetorrents]`) — the engine
+field must stay `snowfl.com` so qBittorrent can route the download. Results are
+sorted by seeders with magnet links resolved up front, and the "Published On"
+column is derived from Snowfl's relative age (e.g. "2 weeks"), so it's approximate.
+
+## Use as a Python library
+
+Prefer to query Snowfl from Python? Install the wrapper from PyPI:
+
+```bash
+pip install snowfl
+```
 
 ### Initializing Snowfl
 
