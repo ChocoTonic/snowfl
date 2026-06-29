@@ -1,9 +1,14 @@
 # Makefile for the Snowfl project
 
-.PHONY: install test test-live test-all build publish
+.PHONY: install test test-live test-all plugin build publish
 
 install:
 	uv sync --extra dev
+
+# Regenerate the single-file qBittorrent search plugin (engine/snowfl.py) from
+# src/snowfl/core.py + plugin/shell.py. Commit the result; it is served raw to users.
+plugin:
+	uv run python tools/build_plugin.py
 
 test:
 	PYTHONPATH=src uv run python -m coverage run -m pytest tests/

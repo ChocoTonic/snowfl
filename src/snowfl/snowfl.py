@@ -1,14 +1,10 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional
 
 import requests
 
+from .core import BASE_URL, HEADERS, build_search_url
 from .lib import ApiError, FetchError, get_api_key
-
-
-BASE_URL = "https://snowfl.com/"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -16,17 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class Snowfl:
-    sort_enum = {
-        "MAX_SEED": "/DH5kKsJw/0/SEED/NONE/",
-        "MAX_LEECH": "/DH5kKsJw/0/LEECH/NONE/",
-        "SIZE_ASC": "/DH5kKsJw/0/SIZE_ASC/NONE/",
-        "SIZE_DSC": "/DH5kKsJw/0/SIZE/NONE/",
-        "RECENT": "/DH5kKsJw/0/DATE/NONE/",
-        "NONE": "/DH5kKsJw/0/NONE/NONE/",
-    }
-
     def __init__(self):
-        self.api_key: Optional[str] = None
+        self.api_key = None
 
     def initialize(self):
         """
@@ -38,20 +25,18 @@ class Snowfl:
 
     def parse(
         self,
-        query: str,
-        sort: str = "NONE",
-        include_nsfw: bool = False,
-        force_fetch_magnet: bool = False,
-    ) -> Dict[str, Any]:
+        query,
+        sort="NONE",
+        include_nsfw=False,
+        force_fetch_magnet=False,
+    ):
         """
         Parse the given query using the Snowfl API.
         """
         if len(query) <= 2:
             raise FetchError("Query should be of length >= 3")
 
-        sort_option = self.sort_enum.get(sort, self.sort_enum["NONE"])
-        include_nsfw_flag = 1 if include_nsfw else 0
-        url = f"{BASE_URL}{self.api_key}/{query}{sort_option}{include_nsfw_flag}"
+        url = build_search_url(self.api_key, query, sort, include_nsfw)
         logger.info(f"URL: {url}")
 
         try:
@@ -76,7 +61,7 @@ class Snowfl:
             logger.error(f"Unexpected error: {e}")
             return {"status": 500, "message": "Internal Server Error", "data": None}
 
-    def _fetch_magnet_links(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _fetch_magnet_links(self, data):
         """
         Fetch magnet links for items without them.
         """
@@ -93,7 +78,7 @@ class Snowfl:
             updated_data.append(item)
         return updated_data
 
-    def _get_magnet_url(self, item: Dict[str, Any]) -> str:
+    def _get_magnet_url(self, item):
         """
         Fetch the magnet URL for a specific item.
         """

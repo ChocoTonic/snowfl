@@ -1,25 +1,10 @@
-class ApiError(Exception):
-    """Exception raised for errors in API call.
+"""Backwards-compatible re-export.
 
-    Attributes:
-        message -- explanation of the error
-    """
+The canonical exception definitions now live in :mod:`snowfl.core` so they can be
+inlined into the single-file qBittorrent plugin. Importing them from here (or from
+``snowfl``) continues to work unchanged.
+"""
 
-    def __init__(self, message="API error occurred"):
-        super().__init__(message)
+from ..core import ApiError, FetchError
 
-
-class FetchError(Exception):
-    """Exception raised for errors during data fetching.
-
-    Attributes:
-        message -- explanation of the error
-        status_code -- HTTP status code related to the error, if applicable
-    """
-
-    def __init__(self, message="Fetch error occurred", status_code=None):
-        super().__init__(message)
-        self.status_code = status_code
-
-    def __str__(self):
-        return f"{self.__class__.__name__}: {self.args[0]} (Status Code: {self.status_code})"
+__all__ = ["ApiError", "FetchError"]
