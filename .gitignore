@@ -10,3 +10,5 @@ coverage.xml
 *.tar.gz
 *.whl
 snowfl.egg-info/
+# Generated qBittorrent plugin (built by tools/build_plugin.py; published via Releases)
+engine/snowfl.py
