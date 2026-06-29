@@ -151,3 +151,57 @@ def test_generator_is_deterministic_and_valid():
     second = build_plugin.generate()
     assert first == second, "generator must be deterministic"
     compile(first, "<engine/snowfl.py>", "exec")  # must be valid Python
+
+
+QBT_REF = "release-5.2.0"
+QBT_NOVA_RAW = (
+    "https://raw.githubusercontent.com/qbittorrent/qBittorrent/"
+    "%s/src/searchengine/nova3/%s"
+)
+QBT_NOVA_FILES = ("nova2.py", "helpers.py", "novaprinter.py", "socks.py")
+
+
+def test_qbittorrent_loader_contract(tmp_path):
+    """Run qBittorrent's real (pinned) nova framework against the generated plugin.
+
+    This is qBittorrent's actual acceptance gate: on install it runs
+    ``nova2.py --capabilities`` and registers the engine only if it appears in the
+    output, else it reports "Plugin is not supported". We fetch the nova3 framework
+    pinned to ``QBT_REF``, drop the generated ``engine/snowfl.py`` into an
+    ``engines/`` dir, and run that exact command — so a change that would make the
+    plugin unsupported fails here against qBittorrent's own loader.
+
+    Skips (rather than fails) only when the framework can't be downloaded, so a
+    network/GitHub outage doesn't masquerade as a plugin regression.
+    """
+    import subprocess
+    import urllib.error
+    import urllib.request
+
+    nova_dir = tmp_path / "nova3"
+    (nova_dir / "engines").mkdir(parents=True)
+    for pkg in (nova_dir, nova_dir / "engines"):
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+
+    try:
+        for fname in QBT_NOVA_FILES:
+            with urllib.request.urlopen(QBT_NOVA_RAW % (QBT_REF, fname), timeout=30) as resp:
+                (nova_dir / fname).write_bytes(resp.read())
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        pytest.skip("could not fetch qBittorrent nova framework (%s): %s" % (QBT_REF, exc))
+
+    with open(PLUGIN_PATH, encoding="utf-8") as f:
+        (nova_dir / "engines" / "snowfl.py").write_text(f.read(), encoding="utf-8")
+
+    proc = subprocess.run(
+        [sys.executable, "-I", "-X", "utf8", str(nova_dir / "nova2.py"), "--capabilities"],
+        cwd=str(nova_dir),
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert "<snowfl>" in proc.stdout, (
+        "qBittorrent nova2 (%s) did not register the plugin -> would be "
+        "'Plugin is not supported'.\nstdout:\n%s\nstderr:\n%s"
+        % (QBT_REF, proc.stdout, proc.stderr)
+    )
