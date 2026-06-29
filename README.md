@@ -1,6 +1,13 @@
 # Snowfl API Python Wrapper
 
-This is an unofficial Python wrapper for the [Snowfl](https://snowfl.com/) API, inspired by the work of [c0dysharma](https://github.com/c0dysharma/snowfl-api). Snowfl is a platform for searching and accessing torrent files. With this wrapper, you can programmatically search for torrents based on your queries and preferences.
+This is an unofficial Python wrapper for the [Snowfl](https://snowfl.com/) API, inspired by the work of [c0dysharma](https://github.com/c0dysharma/snowfl-api). Snowfl is a platform for searching and accessing torrent files.
+
+From a single codebase, it can be used two ways:
+
+- **As a Python library** — `pip install snowfl`, then search programmatically. See [Usage](#usage).
+- **As a qBittorrent search plugin** — a self-contained, dependency-free `engine/snowfl.py` generated from the same core. See [Install as a qBittorrent search plugin](#install-as-a-qbittorrent-search-plugin).
+
+The shared scraping logic lives in `src/snowfl/core.py`; the library and the plugin are thin layers over it (see [Development](#development)).
 
 ## Installation
 
@@ -26,10 +33,10 @@ Because that URL tracks the default branch, qBittorrent's **Check for updates**
 will pull new versions automatically whenever the plugin's `# VERSION:` is bumped.
 (You can also pick **Local file** and select a copy of `engine/snowfl.py`.)
 
-> **Maintainers:** `engine/snowfl.py` is generated — do not edit it by hand. Change
-> `src/snowfl/core.py` and/or `plugin/shell.py`, run `make plugin`, bump
-> `PLUGIN_VERSION` in `plugin/shell.py` when behavior changes, and commit the
-> regenerated file. CI verifies the artifact is in sync and that the version was bumped.
+The plugin maps each result to qBittorrent's fields (`link`, `name`, `size`,
+`seeds`, `leech`, `engine_url`, `desc_link`), sorts by seeders, and resolves magnet
+links up front. `engine/snowfl.py` is generated — see [Development](#development)
+before changing it.
 
 ## Usage
 
@@ -155,6 +162,46 @@ try:
 except FetchError as e:
     print(f"Error searching Snowfl: {e}")
 ```
+
+## Development
+
+The scraping logic has a single source of truth; the library and the qBittorrent
+plugin are generated/derived from it, so there are no hand-maintained duplicates.
+
+```
+src/snowfl/core.py     Transport-agnostic core: API-key scraping, URL builders,
+                       sort options, exceptions. Stdlib only — all HTTP goes through
+                       an injected fetch(url) -> str, so it has no requests dependency.
+src/snowfl/            The requests-based library layer (Snowfl.parse / initialize).
+plugin/shell.py        qBittorrent plugin template (class snowfl + VERSION header).
+tools/build_plugin.py  Deterministic generator that inlines core.py into the template.
+engine/snowfl.py       The generated single-file plugin (committed, served to users).
+tests/                 Library tests, live integration tests, and plugin tests.
+```
+
+Common tasks (see the `Makefile`):
+
+```bash
+make install     # uv sync --extra dev
+make test        # unit tests + coverage
+make test-live   # live tests that hit snowfl.com
+make plugin      # regenerate engine/snowfl.py from core.py + plugin/shell.py
+make build       # build the wheel/sdist
+```
+
+### Changing the plugin
+
+`engine/snowfl.py` is generated — **do not edit it by hand.** Instead:
+
+1. Edit `src/snowfl/core.py` and/or `plugin/shell.py`.
+2. Run `make plugin` to regenerate `engine/snowfl.py`.
+3. Bump `PLUGIN_VERSION` in `plugin/shell.py` whenever behavior changes (qBittorrent
+   only pulls an update when the `# VERSION:` header increases).
+4. Commit the regenerated `engine/snowfl.py`.
+
+CI enforces this: it regenerates the plugin and fails if the committed file is stale,
+if it does not compile as stdlib-only, or if the generated body changed without a
+`PLUGIN_VERSION` bump.
 
 ## Conclusion
 
