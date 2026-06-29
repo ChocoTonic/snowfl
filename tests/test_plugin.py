@@ -9,6 +9,7 @@ import importlib.util
 import json
 import os
 import sys
+import time
 import types
 
 import pytest
@@ -25,6 +26,7 @@ SEARCH_RESULTS = [
         "seeder": 42,
         "leecher": 3,
         "site": "linuxtracker",
+        "age": "2 weeks",
         "url": "https://example.com/torrent/1",
         "magnet": "magnet:?xt=urn:btih:DEADBEEF",
     }
@@ -90,15 +92,42 @@ def test_search_maps_fields_to_prettyprinter(plugin):
 
     assert len(captured) == 1
     row = captured[0]
-    assert row == {
-        "link": "magnet:?xt=urn:btih:DEADBEEF",
-        "name": "Ubuntu 24.04 ISO",
-        "size": "3.0 GB",
-        "seeds": 42,
-        "leech": 3,
-        "engine_url": "https://snowfl.com",
-        "desc_link": "https://example.com/torrent/1",
-    }
+    # Source aggregator ("site") is appended to the name; engine_url stays snowfl.
+    assert row["link"] == "magnet:?xt=urn:btih:DEADBEEF"
+    assert row["name"] == "Ubuntu 24.04 ISO [linuxtracker]"
+    assert row["size"] == "3.0 GB"
+    assert row["seeds"] == 42
+    assert row["leech"] == 3
+    assert row["engine_url"] == "https://snowfl.com"
+    assert row["desc_link"] == "https://example.com/torrent/1"
+    # "2 weeks" ago -> a positive Unix timestamp ~14 days before now.
+    assert isinstance(row["pub_date"], int)
+    assert abs(row["pub_date"] - (int(time.time()) - 14 * 86400)) < 120
+
+
+def test_pub_date_derived_from_age(plugin):
+    # age_to_pub_date is inlined into the shipped plugin; test it directly.
+    mod, _ = plugin
+    now = 1_000_000
+    assert mod.age_to_pub_date("2 weeks", now) == now - 14 * 86400
+    assert mod.age_to_pub_date("6 days", now) == now - 6 * 86400
+    assert mod.age_to_pub_date("1 year", now) == now - 31536000
+    assert mod.age_to_pub_date("bogus", now) == -1
+    assert mod.age_to_pub_date("", now) == -1
+    assert mod.age_to_pub_date(None, now) == -1
+
+
+def test_name_unchanged_when_site_missing(plugin, monkeypatch):
+    # A result with no "site" must not get a "[...]" suffix.
+    mod, captured = plugin
+    no_site = [{"name": "Some Release", "size": "1 GB", "seeder": 1,
+                "leecher": 0, "url": "https://x/1", "magnet": "magnet:?xt=urn:btih:AB"}]
+    monkeypatch.setattr(mod, "retrieve_url", lambda url: (
+        HOME_HTML if url == "https://snowfl.com/"
+        else JS_TEXT if "b.min.js" in url
+        else json.dumps(no_site)))
+    mod.snowfl().search("xyz")
+    assert captured[-1]["name"] == "Some Release"
 
 
 def test_download_torrent_magnet_passthrough(plugin, capsys):

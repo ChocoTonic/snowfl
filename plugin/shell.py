@@ -6,6 +6,7 @@
 # Regenerate with `make plugin`. Project: https://github.com/ChocoTonic/snowfl
 import json
 import re
+import time
 from urllib.parse import quote
 
 try:
@@ -22,7 +23,7 @@ except ImportError:
 
 # Bump this whenever generated behavior changes — qBittorrent only pulls an update
 # when the `# VERSION:` header above (stamped from this value) increases.
-PLUGIN_VERSION = "1.0"
+PLUGIN_VERSION = "1.1"
 
 # __SNOWFL_CORE__
 
@@ -41,16 +42,25 @@ class snowfl(object):
             sort="MAX_SEED",
             force_fetch_magnet=True,
         )
+        now = time.time()
         for item in results:
+            # snowfl is an aggregator; surface the originating site in the name,
+            # since engine_url must stay "https://snowfl.com" (qBittorrent matches
+            # it to route downloads back to this plugin).
+            name = item.get("name", "")
+            site = item.get("site", "")
+            if site:
+                name = "%s [%s]" % (name, site)
             prettyPrinter(
                 {
                     "link": item.get("magnet") or item.get("url", ""),
-                    "name": item.get("name", ""),
+                    "name": name,
                     "size": item.get("size", "-1"),
                     "seeds": item.get("seeder", -1),
                     "leech": item.get("leecher", -1),
                     "engine_url": self.url,
                     "desc_link": item.get("url", ""),
+                    "pub_date": age_to_pub_date(item.get("age"), now),
                 }
             )
 
