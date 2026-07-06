@@ -518,7 +518,7 @@ requires-dist = [
     { name = "certifi", specifier = ">=2025.11.12" },
     { name = "charset-normalizer", specifier = ">=3.4.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = "==7.14.3" },
-    { name = "idna", specifier = ">=3.15" },
+    { name = "idna", specifier = ">=3.18" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "==9.1.1" },
     { name = "pytest-rerunfailures", marker = "extra == 'dev'", specifier = "==15.1" },
     { name = "requests", specifier = ">=2.34.2" },
