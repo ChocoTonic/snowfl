@@ -3,7 +3,7 @@ name = "snowfl"
 version = "0.4.0"
 description = "An unofficial Python wrapper for the Snowfl API, enabling programmatic torrent searches."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.14.6"
 dependencies = [
     "certifi>=2025.11.12",
     "charset-normalizer>=3.4.9",
