@@ -5,7 +5,8 @@ on:
     branches: [master]
   pull_request:
   schedule:
-    - cron: "0 7 * * *"
+    # Weekly is enough for the external-service liveness check.
+    - cron: "0 7 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -18,7 +19,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  unit:
+  quality:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
@@ -50,9 +51,25 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+      - name: Build wheel
+        run: uv build
+
+      - name: Smoke-import wheel in isolated venv
+        run: |
+          uv run --isolated --with dist/*.whl --no-project -- python -c "import snowfl; print(snowfl.__name__)"
+
+      - name: Generate plugin from sources
+        run: make plugin
+
+      - name: Plugin compiles as stdlib-only (system python)
+        run: python3 -m py_compile engine/snowfl.py
+
+      - name: Run plugin tests
+        run: PYTHONPATH=src uv run python -m pytest tests/test_plugin.py
+
   live:
-    # Skip on push to avoid double-runs (PRs from the same repo trigger both).
-    if: github.event_name != 'push'
+    # External-service liveness is periodic/manual; unit tests remain the PR gate.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -73,61 +90,3 @@ jobs:
 
       - name: Run live tests
         run: make test-live
-
-  build:
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v8.3.2
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Cache .venv
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-
-      - name: Sync deps
-        run: uv sync --extra dev
-
-      - name: Build wheel
-        run: uv build
-
-      - name: Smoke-import wheel in isolated venv
-        run: |
-          uv run --isolated --with dist/*.whl --no-project -- python -c "import snowfl; print(snowfl.__name__)"
-
-  plugin:
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: astral-sh/setup-uv@v8.3.2
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Cache .venv
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-snowfl-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-
-      - name: Sync deps
-        run: uv sync --extra dev
-
-      - name: Generate plugin from sources
-        run: make plugin
-
-      - name: Plugin compiles as stdlib-only (system python)
-        run: python3 -m py_compile engine/snowfl.py
-
-      - name: Run plugin tests
-        run: PYTHONPATH=src uv run python -m pytest tests/test_plugin.py
