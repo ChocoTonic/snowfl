@@ -3,17 +3,17 @@ name = "snowfl"
 version = "0.4.0"
 description = "An unofficial Python wrapper for the Snowfl API, enabling programmatic torrent searches."
 readme = "README.md"
-requires-python = ">=3.14.7"
+requires-python = ">=3.14.8"
 dependencies = [
     "certifi>=2025.11.12",
-    "charset-normalizer>=3.5.1",
-    "idna>=3.18",
+    "charset-normalizer>=3.5.2",
+    "idna>=3.20",
     "requests>=2.34.2",
     "urllib3>=2.7.0",
 ]
 
 [project.optional-dependencies]
-dev = ["build==1.6.0", "coverage==7.15.4", "pytest==9.1.1", "pytest-rerunfailures==15.1", "twine==6.2.0"]
+dev = ["build==1.6.1", "coverage==7.16.2", "pytest==9.1.1", "pytest-rerunfailures==15.1", "twine==6.2.0"]
 
 [tool.pytest.ini_options]
 markers = [
