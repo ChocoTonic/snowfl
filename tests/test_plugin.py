@@ -177,6 +177,8 @@ def test_qbittorrent_loader_contract(tmp_path):
     import subprocess
     import urllib.error
     import urllib.request
+    import ssl
+    import certifi
 
     nova_dir = tmp_path / "nova3"
     (nova_dir / "engines").mkdir(parents=True)
@@ -185,7 +187,8 @@ def test_qbittorrent_loader_contract(tmp_path):
 
     try:
         for fname in QBT_NOVA_FILES:
-            with urllib.request.urlopen(QBT_NOVA_RAW % (QBT_REF, fname), timeout=30) as resp:
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib.request.urlopen(QBT_NOVA_RAW % (QBT_REF, fname), timeout=30, context=context) as resp:
                 (nova_dir / fname).write_bytes(resp.read())
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         pytest.skip("could not fetch qBittorrent nova framework (%s): %s" % (QBT_REF, exc))
