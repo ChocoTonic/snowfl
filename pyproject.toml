@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["build==1.6.1", "coverage==7.17.0", "pytest==9.2.0", "pytest-rerunfailures==15.1", "twine==6.2.0"]
+dev = ["build==1.6.1", "coverage==7.17.2", "pytest==9.2.0", "pytest-rerunfailures==15.1", "twine==6.2.0"]
 
 [tool.pytest.ini_options]
 markers = [
